@@ -39,12 +39,12 @@ func parse(xmlData []byte) ([]byte, error) {
   err := xml.Unmarshal(xmlData, stock)
   if err != nil {
     fmt.Println("Error Unmarshaling XML:", err.Error())
-    return nil, err
+    return []byte{}, err
   }
   data, err := json.Marshal(stock)
   if err != nil {
     fmt.Println("Error Marshaling to JSON:", err.Error())
-    return nil, err
+    return []byte{}, err
   }
   return data, nil
 }
