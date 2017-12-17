@@ -13,10 +13,6 @@ type Stock struct {
     } `xml:"Product" json:"products"`
 }
 
- // func (stock Stock) UnmarshalXML(b []byte) error {
- //   return "hola"
- // }
-
 func main() {
   xmlData := []byte(`<?xml version="1.0" encoding="UTF-8" ?>
   <ProductList>
@@ -34,7 +30,7 @@ func main() {
   if err != nil {
     panic(err)
   }
-  //fmt.Printf("Struct data: %s\n", stock.ProductList[0].Sku)
+
   fmt.Printf("Json data: %s\n", data)
 }
 
