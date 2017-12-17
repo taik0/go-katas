@@ -30,18 +30,25 @@ func main() {
   </Product>
   </ProductList>`)
 
+  data, err := parse(xmlData)
+  if err != nil {
+    panic(err)
+  }
+  //fmt.Printf("Struct data: %s\n", stock.ProductList[0].Sku)
+  fmt.Printf("Json data: %s\n", data)
+}
+
+func parse(xmlData []byte) ([]byte, error) {
   stock := &Stock{}
   err := xml.Unmarshal(xmlData, stock)
   if err != nil {
     fmt.Println("Error Unmarshaling XML:", err.Error())
-    panic(err)
+    return nil, err
   }
-
   data, err := json.Marshal(stock)
   if err != nil {
     fmt.Println("Error Marshaling to JSON:", err.Error())
-    panic(err)
+    return nil, err
   }
-  fmt.Printf("Struct data: %s\n", stock.ProductList[0].Sku)
-  fmt.Printf("Json data: %s\n", data)
+  return data, nil
 }
