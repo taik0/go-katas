@@ -4,9 +4,13 @@ import (
   "encoding/json"
   "encoding/xml"
   "fmt"
+  "time"
+  "math/rand"
 )
 
 type Stock struct {
+    close chan interface{}
+    Name string
     ProductList []struct {
         Sku      string `xml:"sku" json:"sku"`
         Quantity int    `xml:"quantity" json:"quantity"`
@@ -26,25 +30,39 @@ func main() {
   </Product>
   </ProductList>`)
 
-  data, err := parse(xmlData)
-  if err != nil {
-    panic(err)
+  done := make(chan interface{})
+  for i := 0; i < 10; i++ {
+    stock := Stock{close: done, Name: fmt.Sprintf("#%d", i)}
+    go stock.Parse(xmlData)
+
   }
 
-  fmt.Printf("Json data: %s\n", data)
+   for i := 0; i < 10; i++ {
+     data := <-done
+     fmt.Printf("Json %d data: %s\n", i, data)
+   }
 }
 
-func parse(xmlData []byte) ([]byte, error) {
-  stock := &Stock{}
-  err := xml.Unmarshal(xmlData, stock)
-  if err != nil {
+func (s Stock) Parse(xmlData []byte) ([]byte, error) {
+
+  time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+
+  err := xml.Unmarshal(xmlData, &s)
+  if nil != err {
     fmt.Println("Error Unmarshaling XML:", err.Error())
     return []byte{}, err
   }
-  data, err := json.Marshal(stock)
-  if err != nil {
+
+  time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+
+  data, err := json.Marshal(s)
+  if nil != err {
     fmt.Println("Error Marshaling to JSON:", err.Error())
     return []byte{}, err
   }
+
+  time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+  fmt.Println(s.Name)
+  s.close <- data
   return data, nil
 }
