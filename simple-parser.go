@@ -43,14 +43,14 @@ func main() {
    }
 }
 
-func (s Stock) Parse(xmlData []byte) ([]byte, error) {
+func (s Stock) Parse(xmlData []byte) {
 
   time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
 
   err := xml.Unmarshal(xmlData, &s)
   if nil != err {
     fmt.Println("Error Unmarshaling XML:", err.Error())
-    return []byte{}, err
+    return
   }
 
   time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
@@ -58,11 +58,10 @@ func (s Stock) Parse(xmlData []byte) ([]byte, error) {
   data, err := json.Marshal(s)
   if nil != err {
     fmt.Println("Error Marshaling to JSON:", err.Error())
-    return []byte{}, err
+    return
   }
 
   time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
   fmt.Println(s.Name)
   s.close <- data
-  return data, nil
 }
