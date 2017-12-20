@@ -25,9 +25,15 @@ func main() {
 
 	r := gin.Default()
 	r.GET("/product", func(c *gin.Context) {
-		c.XML(200, randProductListGen(10))
+		d := rand.Intn(100)
+		if d < 10 {
+			c.AbortWithStatus(500)
+		} else {
+			randDelay()
+			c.XML(200, randProductListGen(10))
+		}
 	})
-	r.Run()
+	r.Run(fmt.Sprintf(":%d", *port))
 }
 
 func randStrGen(lenght int) string {
