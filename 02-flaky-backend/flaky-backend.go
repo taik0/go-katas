@@ -42,3 +42,17 @@ func randProductGen() ([]byte, error) {
 	prod := Product{Sku: randStrGen(40), Quantity: rand.Intn(100)}
 	return xml.MarshalIndent(prod, "", "\t")
 }
+
+func randDelay() {
+  n := rand.Intn(100)
+  if n < 5 {
+    return
+  } else if n < 25 {
+    time.Sleep(time.Duration(rand.Int31n(10) * time.Millisecond)
+  } else if n < 75 {
+    time.Sleep(time.Duration((rand.Int31n(50)) + 50) * time.Millisecond)
+  } else {
+    time.Sleep(time.Duration(rand.Int31n(500)) + 200) * time.Millisecond)
+  }
+  return
+}
