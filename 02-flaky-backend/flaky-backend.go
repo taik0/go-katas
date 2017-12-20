@@ -4,29 +4,30 @@ import "flag"
 import "fmt"
 import "math/rand"
 import "time"
-import "encoding/xml"
+import "github.com/gin-gonic/gin"
 
 type Product struct {
 	Sku      string `xml:"sku"`
 	Quantity int    `xml:"quantity"`
 }
 
+type Stock struct {
+	ProductList []Product `xml:"Product"`
+}
+
 func main() {
 
 	rand.Seed(time.Now().Unix())
-	var sku_len int = 40
 	port := flag.Int("port", 8081, "Listen port for the flaky backend.")
 	flag.Parse()
 
 	fmt.Printf("Port flag value: %d\n", *port)
-	x := randStrGen(sku_len)
-	fmt.Println(x)
 
-	prod, err := randProductGen()
-	if nil != err {
-		panic(err)
-	}
-	fmt.Println(string(prod))
+	r := gin.Default()
+	r.GET("/product", func(c *gin.Context) {
+		c.XML(200, randProductListGen(10))
+	})
+	r.Run()
 }
 
 func randStrGen(lenght int) string {
@@ -38,9 +39,16 @@ func randStrGen(lenght int) string {
 	return string(random_array)
 }
 
-func randProductGen() ([]byte, error) {
-	prod := Product{Sku: randStrGen(40), Quantity: rand.Intn(100)}
-	return xml.MarshalIndent(prod, "", "\t")
+func randProductGen() Product {
+	return Product{Sku: randStrGen(40), Quantity: rand.Intn(100)}
+}
+
+func randProductListGen(l int) Stock {
+	my_stock := make([]Product, l)
+	for i := 0; i < l; i++ {
+		my_stock[i] = randProductGen()
+	}
+	return Stock{my_stock}
 }
 
 func randDelay() {
