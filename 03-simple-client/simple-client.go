@@ -6,6 +6,7 @@ import "io/ioutil"
 import "encoding/xml"
 
 type Stock struct {
+    close chan interface{}
     ProductList []struct {
         Sku      string `xml:"sku" json:"sku"`
         Quantity int    `xml:"quantity" json:"quantity"`
@@ -14,31 +15,35 @@ type Stock struct {
 
 func main() {
 
-  stock := Stock{}
-  err := Parse("http://localhost:8081/product", &stock)
-  if err != nil {
-    panic(err)
+  done := make(chan interface{})
+  for i := 0; i < 10; i++ {
+    go Parse("http://localhost:8081/product", done)
   }
-  fmt.Println(stock.ProductList[9].Sku)
+
+   for i := 0; i < 10; i++ {
+     data := <-done
+     fmt.Printf("data: %v\n", data)
+   }
 
 }
 
-func Parse(url string, stock *Stock) error {
+func Parse(url string, done chan interface{}) {
+  stock := Stock{}
   resp, err := http.Get(url)
   if nil != err {
-    return err
+    return
   }
 
   products, err := ioutil.ReadAll(resp.Body)
   resp.Body.Close()
   if nil != err {
-    return err
+    return
   }
 
-  err = xml.Unmarshal(products, stock)
+  err = xml.Unmarshal(products, &stock)
   if err != nil {
-    return err
+    return
   }
 
-  return nil
+  done <- stock
 }
