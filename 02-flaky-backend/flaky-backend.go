@@ -5,11 +5,10 @@ import "fmt"
 import "math/rand"
 import "time"
 
-
 func main() {
 
-  rand.Seed(time.Now().Unix())
-  var sku_len int = 6
+	rand.Seed(time.Now().Unix())
+	var sku_len int = 40
 	port := flag.Int("port", 8081, "Listen port for the flaky backend.")
 	flag.Parse()
 
@@ -18,10 +17,11 @@ func main() {
 	fmt.Println(x)
 }
 
-func randStrGen(len int) string {
-	random_array := make([]rune, len)
-	for i, v := range rand.Perm(26)[:len] {
-		random_array[i] = rune(v) + 65
+func randStrGen(lenght int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.")
+	random_array := make([]rune, lenght)
+	for i, v := range rand.Perm(len(letters))[:lenght] {
+		random_array[i] = rune(letters[v])
 	}
 	return string(random_array)
 }
