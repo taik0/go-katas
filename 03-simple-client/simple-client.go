@@ -21,8 +21,27 @@ type Stock struct {
 func main() {
 
 	done := make(chan interface{})
+
+	resp, err := http.Get("http://localhost:8081/product")
+	if nil != err {
+		fmt.Println("Error trying to get URL: ", err.Error())
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode == 500 {
+		fmt.Println("Error 500")
+		panic("Error 500")
+	}
+	products, err := ioutil.ReadAll(resp.Body)
+
+	if nil != err {
+		fmt.Println("Error reading data: ", err.Error())
+		return
+	}
+
 	for i := 0; i < 10; i++ {
-		go Parse("http://localhost:8081/product", done)
+		go Parse(products, done)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -32,35 +51,12 @@ func main() {
 
 }
 
-func Parse(url string, done chan interface{}) {
+func Parse(products []byte, done chan interface{}) {
 
 	stock := Stock{}
-	resp, err := http.Get(url)
-	if nil != err {
-		fmt.Println("Error trying to get URL: ", err.Error())
-		return
-	}
-
-	if resp.Status == "500" {
-		fmt.Println("Error 500")
-		return
-	}
-
-	products, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-
-	if nil != err {
-		fmt.Println("Error reading data: ", err.Error())
-		return
-	}
-
-	if len(products) == 0 {
-		fmt.Println("Data len 0")
-		return
-	}
 
 	time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
-	err = xml.Unmarshal(products, &stock)
+	err := xml.Unmarshal(products, &stock)
 	if err != nil {
 		fmt.Println("Error Unmarshaling XML:", err.Error())
 		return
