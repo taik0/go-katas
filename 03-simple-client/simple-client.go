@@ -1,9 +1,14 @@
 package main
 
-import "net/http"
-import "fmt"
-import "io/ioutil"
-import "encoding/xml"
+import (
+	"net/http"
+	"fmt"
+	"io/ioutil"
+	"encoding/xml"
+	"encoding/json"
+	"math/rand"
+	"time"
+)
 
 type Stock struct {
 	close       chan interface{}
@@ -22,28 +27,52 @@ func main() {
 
 	for i := 0; i < 10; i++ {
 		data := <-done
-		fmt.Printf("data: %v\n", data)
+		fmt.Printf("data: %s\n", data)
 	}
 
 }
 
 func Parse(url string, done chan interface{}) {
+
 	stock := Stock{}
 	resp, err := http.Get(url)
 	if nil != err {
+		fmt.Println("Error trying to get URL: ", err.Error())
+		return
+	}
+
+	if resp.Status == "500" {
+		fmt.Println("Error 500")
 		return
 	}
 
 	products, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
+	defer resp.Body.Close()
+
 	if nil != err {
+		fmt.Println("Error reading data: ", err.Error())
 		return
 	}
 
+	if len(products) == 0 {
+		fmt.Println("Data len 0")
+		return
+	}
+
+	time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
 	err = xml.Unmarshal(products, &stock)
 	if err != nil {
+		fmt.Println("Error Unmarshaling XML:", err.Error())
 		return
 	}
 
-	done <- stock
+	time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+	data, err := json.Marshal(stock)
+	if nil != err {
+		fmt.Println("Error Marshaling to JSON:", err.Error())
+		return
+	}
+
+	time.Sleep(time.Duration(rand.Int31n(1000)) * time.Millisecond)
+	done <- data
 }
