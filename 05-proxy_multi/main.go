@@ -37,18 +37,15 @@ func GetBackendData(url string) Subscription {
 		defer resp.Body.Close()
 
 		if nil != err {
-			//fmt.Println("Cannot Get data from backend")
 			return
 		}
 
 		if resp.StatusCode != 200 {
-			//fmt.Println("Invalid Status Code")
 			return
 		}
 
 		products, err := ioutil.ReadAll(resp.Body)
 		if nil != err {
-			//fmt.Println("Error reading the body")
 			return
 		}
 
