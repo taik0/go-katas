@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -58,7 +57,7 @@ func GetBackendData(url string) Subscription {
 	return sub
 }
 
-func MergeSubscription(urls ...string) <-chan []byte {
+func MergeSubscription(urls ...string) chan Stock {
 	results := Subscription{data: make(chan []byte), closing: make(chan bool)}
 	subs := make([]Subscription, len(urls))
 	for i, url := range urls {
@@ -81,11 +80,14 @@ func MergeSubscription(urls ...string) <-chan []byte {
 		}
 	}(subs...)
 
-	done := make(chan []byte)
+	done := make(chan Stock)
 	go func() {
 		data, ok := <-results.data
 		if ok == true {
-			go Parse(data, done)
+			stock, err := Parse(data)
+			if nil == err {
+				done <- stock
+			}
 		}
 	}()
 	return done
@@ -111,7 +113,7 @@ func main() {
 			return
 		case data, ok := <-products:
 			if ok == true {
-				c.String(200, string(data))
+				c.JSON(200, data)
 			} else {
 				c.String(500, "Error from backend ")
 			}
@@ -122,21 +124,8 @@ func main() {
 
 }
 
-func Parse(products []byte, done chan<- []byte) {
-
+func Parse(products []byte) (Stock, error) {
 	stock := Stock{}
-
 	err := xml.Unmarshal(products, &stock)
-	if err != nil {
-		fmt.Println("Error Unmarshaling XML:", err.Error())
-		return
-	}
-
-	data, err := json.Marshal(stock)
-	if nil != err {
-		fmt.Println("Error Marshaling to JSON:", err.Error())
-		return
-	}
-
-	done <- data
+	return stock, err
 }
