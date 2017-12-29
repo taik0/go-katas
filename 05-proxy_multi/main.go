@@ -71,6 +71,7 @@ func MergeSubscription(urls ...string) Subscription {
 			case data, ok := <-sub.data:
 				if ok == true {
 					results.data <- data
+					results.Close()
 				}
 			}
 		}(sub)
@@ -109,7 +110,6 @@ func main() {
 			return
 		case xdata, ok := <-products.data:
 			if ok == true {
-			products.Close()
 			go Parse(xdata, done)
 			data := <-done
 			c.String(200, string(data))
