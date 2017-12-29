@@ -68,14 +68,10 @@ func MergeSubscription(urls ...string) Subscription {
 	for _, sub := range subs {
 		go func(sub Subscription) {
 			select {
-			case <-sub.closing:
-				close(sub.data)
-				return
-			case data := <-sub.data:
-				if len(data) > 0 {
+			case data, ok := <-sub.data:
+				if ok == true {
 					results.data <- data
 				}
-				return
 			}
 		}(sub)
 
@@ -84,9 +80,7 @@ func MergeSubscription(urls ...string) Subscription {
 	select {
 	case <-results.closing:
 		for _, sub := range subs {
-			go func(sub Subscription) {
 				sub.Close()
-			}(sub)
 		}
 	}
 }()
@@ -111,12 +105,17 @@ func main() {
 		products := MergeSubscription("http://localhost:8081/product", "http://localhost:8081/product")
 		select {
 		case <-time.After(globalTimeout):
-			c.String(500, "Timeout")
+			c.String(500, "Timeout ")
 			return
-		case xdata := <-products.data:
+		case xdata, ok := <-products.data:
+			if ok == true {
+			products.Close()
 			go Parse(xdata, done)
 			data := <-done
 			c.String(200, string(data))
+			} else {
+				c.String(500, "Error from backend ")
+			}
 		}
 
 	})
