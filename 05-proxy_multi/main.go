@@ -26,7 +26,7 @@ type Subscription struct {
 }
 
 func (s *Subscription) Close() {
-	s.closing <- true
+	close(s.closing)
 }
 
 func GetBackendData(url string) Subscription {
@@ -34,20 +34,21 @@ func GetBackendData(url string) Subscription {
 	go func() {
 		defer close(sub.data)
 		resp, err := http.Get(url)
+		defer resp.Body.Close()
+
 		if nil != err {
-			fmt.Println("Cannot Get data from backend")
+			//fmt.Println("Cannot Get data from backend")
 			return
 		}
 
-		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
-			fmt.Println("Invalid Status Code")
+			//fmt.Println("Invalid Status Code")
 			return
 		}
 
 		products, err := ioutil.ReadAll(resp.Body)
 		if nil != err {
-			fmt.Println("Error reading the body")
+			//fmt.Println("Error reading the body")
 			return
 		}
 
@@ -56,36 +57,41 @@ func GetBackendData(url string) Subscription {
 		case sub.data <- products:
 		}
 	}()
+
 	return sub
 }
 
-func MergeSubscription(urls ...string) Subscription {
-	results := Subscription{data: make(chan []byte, len(urls)), closing: make(chan bool)}
+func MergeSubscription(urls ...string) <-chan []byte {
+	results := Subscription{data: make(chan []byte), closing: make(chan bool)}
 	subs := make([]Subscription, len(urls))
 	for i, url := range urls {
 		subs[i] = GetBackendData(url)
 	}
 	for _, sub := range subs {
 		go func(sub Subscription) {
-			select {
-			case data, ok := <-sub.data:
-				if ok == true {
-					results.data <- data
-					results.Close()
-				}
+			data, ok := <-sub.data
+			if ok == true {
+				results.data <- data
+				results.Close()
 			}
 		}(sub)
+	}
 
-	}
-	go func() {
-	select {
-	case <-results.closing:
+	go func(subs ...Subscription) {
+		<-results.closing
 		for _, sub := range subs {
-				sub.Close()
+			sub.Close()
 		}
-	}
-}()
-	return results
+	}(subs...)
+
+	done := make(chan []byte)
+	go func() {
+		data, ok := <-results.data
+		if ok == true {
+			go Parse(data, done)
+		}
+	}()
+	return done
 }
 
 const globalTimeout = 250 * time.Millisecond
@@ -98,21 +104,17 @@ func main() {
 
 	fmt.Printf("Port flag value: %d\n", *port)
 
-	done := make(chan []byte)
-
 	r := gin.Default()
 	r.GET("/product", func(c *gin.Context) {
 
-		products := MergeSubscription("http://localhost:8081/product", "http://localhost:8081/product")
+		products := MergeSubscription("http://localhost:8081/product", "http://localhost:8081/product", "http://localhost:8081/product")
 		select {
 		case <-time.After(globalTimeout):
 			c.String(500, "Timeout ")
 			return
-		case xdata, ok := <-products.data:
+		case data, ok := <-products:
 			if ok == true {
-			go Parse(xdata, done)
-			data := <-done
-			c.String(200, string(data))
+				c.String(200, string(data))
 			} else {
 				c.String(500, "Error from backend ")
 			}
