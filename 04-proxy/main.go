@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+	"flag"
 )
 
 type Stock struct {
