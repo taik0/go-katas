@@ -25,7 +25,12 @@ type Subscription struct {
 }
 
 func (s *Subscription) Close() {
-	close(s.closing)
+	select {
+	case s.closing <- true:
+		close(s.closing)
+	default:
+		return
+	}
 }
 
 func GetBackendData(url string) Subscription {
