@@ -33,6 +33,96 @@ func (s *Subscription) Close() {
 	}
 }
 
+type LoadBalancer interface {
+	Merge(urls ...string) chan Stock
+}
+
+
+type RandomLoadBalancer int
+
+func (lb *RandomLoadBalancer) Merge(urls ...string) chan Stock {
+	n := make([]string, *lb)
+	for i, _ := range n {
+		n[i] = urls[rand.Intn(len(urls))]
+	}
+	return MergeSubscription(n...)
+}
+
+type RRLoadBalancer struct {
+	Reqs          int
+	Weights       []int
+	Last          int
+	CurrentWeight int
+}
+
+func (lb *RRLoadBalancer) Merge(urls ...string) chan Stock {
+	n := make([]string, lb.Reqs)
+	for i, _ := range n {
+		n[i] = urls[lb.next(len(urls))]
+	}
+	return MergeSubscription(n...)
+}
+
+func (lb *RRLoadBalancer) next(numBackends int) int {
+	for {
+		lb.Last = (lb.Last + 1) % numBackends
+		if lb.Last == 0 {
+			lb.CurrentWeight = lb.CurrentWeight - lb.gcd(numBackends)
+			if lb.CurrentWeight <= 0 {
+				lb.CurrentWeight = lb.max(numBackends)
+				if lb.CurrentWeight == 0 {
+					return 0
+				}
+			}
+		}
+		if lb.Weights[lb.Last] >= lb.CurrentWeight {
+			return lb.Last
+		}
+	}
+}
+
+func (lb *RRLoadBalancer) max(numBackends int) int {
+	max := 0
+	weights := lb.Weights[:numBackends]
+	for i := range weights {
+		if weights[i] > max {
+			max = weights[i]
+		}
+	}
+	return max
+}
+
+func (lb *RRLoadBalancer) gcd(numBackends int) int {
+	weights := lb.Weights[:numBackends]
+
+	for len(weights) > 2 {
+		weights = append(weights[2:], gcdHelper(weights[0], weights[1]))
+	}
+	if len(weights) == 1 {
+		return weights[0]
+	}
+	return gcdHelper(weights[0], weights[1])
+}
+
+func NewWRRLoadBalancer(reqs int, weights []int) LoadBalancer {
+	return &RRLoadBalancer{Reqs: reqs, Weights: weights, Last: -1, CurrentWeight: 0}
+}
+
+func NewRRLoadBalancer(reqs int) LoadBalancer {
+	weights := make([]int, 100)
+	for i := range weights {
+		weights[i] = 1
+	}
+	return &RRLoadBalancer{Reqs: reqs, Weights: weights, Last: -1, CurrentWeight: 0}
+}
+
+func gcdHelper(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
 func GetBackendData(url string) Subscription {
 	sub := Subscription{data: make(chan []byte), closing: make(chan bool)}
 	go func() {
@@ -108,10 +198,14 @@ func main() {
 
 	fmt.Printf("Port flag value: %d\n", *port)
 
+	//var lb RandomLoadBalancer = 2
+	lb := NewRRLoadBalancer(5)
+	//lb := NewWRRLoadBalancer(5, []int{3,1,1,1,1,1,1})
+
 	r := gin.Default()
 	r.GET("/product", func(c *gin.Context) {
 
-		products := MergeSubscription("http://localhost:8081/product", "http://localhost:8081/product", "http://localhost:8081/product")
+		products := lb.Merge("http://localhost:8081/product", "http://localhost:8082/product", "http://localhost:8083/product")
 		select {
 		case <-time.After(globalTimeout):
 			c.String(500, "Timeout ")
